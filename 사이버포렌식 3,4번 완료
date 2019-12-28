@@ -1,0 +1,150 @@
+import sys
+from PIL import Image   #이미지를 추출하기 위한 PIL
+
+def genData(data):   #8비트 바이너리로 변환
+	newd = []
+	for i in data:
+		newd.append(format(ord(i),'08b'))       
+	return newd
+def modPix(pix, data):   #픽셀 변조
+        #픽셀은 8비트 이진 데이터에 따라 수정되고 최종적으로 반환
+	datalist = genData(data)
+	lendata = len(datalist)
+	imdata = iter(pix)
+
+	for i in range(lendata):
+                #한번에 3픽셀을 추출
+		pix = [value for value in imdata.__next__()[:3] +
+					imdata.__next__()[:3]+
+					imdata.__next__()[:3]]
+	for j in range(0,8):
+                #픽셀 값은 1과 0에 대해 홀수여야 한다
+		if(datalist[i][j] =='0') and (pix[j]%2 != 0):
+			if(pix[j]%2 != 0):
+				pix[j] -=1
+		elif (datalist[i][j] == '1') and (pix[j] %2 == 0):
+			pix[j] -=1
+	if(i== lendata -1):
+		if(pix[-1] %2 == 0):
+			pix[-1] -= 1
+	else:
+		if(pix[-1] %2 != 0):
+			pix[-1] -= 1
+
+	pix = tuple(pix)
+	yield pix[0:3]
+	yield pix[3:6]
+	yield pix[6:9]
+
+def encode_enc(newimg, data):   #Encode 과정(이미지와 데이터의 조합)
+	w = newimg.size[0]
+	(x,y) = (0,0)
+	data = data + '1111111111111110'  #이미지에 넣기 위해 데이터를 LSB변조
+
+	for pixel in modPix(newimg.getdata(), data):
+                #변조된 픽셀을 새 이미지에 넣음
+		newimg.putpixel((x,y), pixel)
+		if(x==w -1):
+			x = 0
+			y +=1
+		else:
+			x+=1
+
+def encode():   #encode 실행
+	img = input("Enter image name(with extension) : ")
+	image = Image.open(img, 'r') #읽기 모드로 오픈
+
+	data = input("Enter data to be encoded : ") #데이터 삽입
+	if(len(data) == 0):
+		raise ValueError('Data is empty')
+
+	newimg = image.copy()
+	encode_enc(newimg, data)  #조합
+
+	new_img_name  =input("Enter the name of new image(with extension) : ")
+	newimg.save(new_img_name, str(new_img_name.split(".")[1].upper()))
+        #새로 생성되는 이미지 생성
+	
+def decode():   #decode 실행
+	img = input("Enter image name(with extension) : ")
+	image = Image.open(img, 'r') #읽기 모드로 오픈
+
+	data = ''
+	imgdata = iter(image.getdata())
+
+	while(True):
+		pixels = [value for value in imgdata.__next__()[:3] +
+					imgdata.__next__()[:3]+
+					imgdata.__next__()[:3]]
+		binstr =''
+		for i in pixels[:8]:
+			if (i %2 ==0):
+				binstr +='0'
+			else:
+				binstr += '1'
+				
+		data += chr(int(binstr,2))
+		if(pixels[-1] %2 != 0):
+			return data
+	
+def third():
+	a = int(input(":: Welcome to Steganography :: \n"
+			"1. Encode \n 2. Decode \n"))
+
+	if(a == 1):
+		encode()
+	elif(a==2):
+		print("Decode word -"+ decode())
+	else:
+		raise Exeption("Enter correct input")
+
+def fourth():
+	
+	fname1 = input("Enter first filename: ")
+	fname2 = input("Enter second filename: ")
+
+	f1 = open(fname1,'rb')   #첫번째 파일 오픈
+	f2 = open(fname2,'rb')   #두번째 파일 오픈
+	print("---------------------------------")
+
+	f1_line = f1.readline()  #첫번째 파일을 읽어들임
+	f2_line = f2.readline()  #두번째 파일을 읽어들임
+
+	line_no =1   #줄 수 
+
+	while f1_line != '' or f2_line != '':
+		f1_line = f1_line.rstrip()  #공백을 삭제
+		f2_line = f2_line.rstrip()  #공백을 삭제
+
+		if f1_line != f2_line:    #두 파일이 같지 않다면 
+			if f2_line == '' and f1_line != '':   #두번째 파일이 EOF이고 첫번째 파일이 남아있는 경우
+				print("Different", "Line-%d : " % line_no, f1_line)
+				#완전히 다른 줄을 통채로 출력
+			elif f1_line != '':    #첫번째 파일이 EOF일 때 
+				print("First character detecting : ", "Line-%d" % line_no, f1_line)
+				#첫번째 파일의 다른 부분 출력
+			if f1_line == '' and f2_line != '':  #첫번째 파일이 EOF일 때
+				print("Different", "Line-%d : " % line_no, f2_line)
+				#완전히 다른 죽을 통채로 출력
+			elif f2_line != '':  #두번째 파일이 EOF일 때
+				print("Second character detecting :", "Line-%d" % line_no, f2_line)
+				#두번째 파일의 다른 부분 출력
+	
+			print()
+
+		f1_line = f1.readline()
+		f2_line = f2.readline()
+
+		line_no +=1
+
+	f1.close()
+	f2.close()
+
+
+if __name__ == '__main__':
+	number = int(input("Choose your number(3,4) : "))
+	if(number==3):
+		third() #3번 실행
+	elif(number==4):
+		fourth()  #4번 실행
+	
